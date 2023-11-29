@@ -24,9 +24,17 @@ export class EDAAppStack extends cdk.Stack {
 
     // Integration infrastructure
 
-  const queue = new sqs.Queue(this, "img-created-queue", {
+  // const queue = new sqs.Queue(this, "img-created-queue", {
+  //   receiveMessageWaitTime: cdk.Duration.seconds(10),
+  // });
+
+  const imageProcessQueue = new sqs.Queue(this, "img-created-queue", {
     receiveMessageWaitTime: cdk.Duration.seconds(10),
   });
+
+  const newImageTopic = new sns.Topic(this, "NewImageTopic", {
+    displayName: "New Image topic",
+  }); 
 
   // Lambda functions
 
@@ -44,17 +52,26 @@ export class EDAAppStack extends cdk.Stack {
 
   // Event triggers
 
+  // imagesBucket.addEventNotification(
+  //   s3.EventType.OBJECT_CREATED,
+  //   new s3n.SqsDestination(queue)
+  // );
+
+  // const newImageEventSource = new events.SqsEventSource(queue, {
+  //   batchSize: 5,
+  //   maxBatchingWindow: cdk.Duration.seconds(10),
+  // });
+
+  // processImageFn.addEventSource(newImageEventSource);
+
   imagesBucket.addEventNotification(
     s3.EventType.OBJECT_CREATED,
-    new s3n.SqsDestination(queue)
+    new s3n.SnsDestination(newImageTopic)  // Changed
+);
+
+  newImageTopic.addSubscription(
+    new subs.SqsSubscription(imageProcessQueue)
   );
-
-  const newImageEventSource = new events.SqsEventSource(queue, {
-    batchSize: 5,
-    maxBatchingWindow: cdk.Duration.seconds(10),
-  });
-
-  processImageFn.addEventSource(newImageEventSource);
 
   // Permissions
 
